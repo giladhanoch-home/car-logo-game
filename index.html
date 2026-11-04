@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>איזה אוטו?</title>
+<style>
+  :root { --bg: #ffffff; --card: #ffffff; --line: #eeeeee; --btn: #1e6bff; --btn-text: #ffffff; --muted: #bbbbbb; }
+  /* Always white, also in dark mode (by request) */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); overflow: hidden; }
+  .logoCard { background: var(--card); border-radius: 24px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  body {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column;
+    height: 100dvh;
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+  }
+  .half {
+    flex: 1 1 0; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px 0;
+  }
+  .half img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    transition: opacity .25s ease;
+  }
+  #logo { width: 75%; max-width: 420px; }
+  #car  { width: 100%; border-radius: 16px; }
+  .divider { height: 1px; background: var(--line); flex: 0 0 auto; }
+  .hidden { opacity: 0; }
+  #again {
+    flex: 0 0 auto;
+    width: 100%; max-width: 480px; margin: 0 auto;
+    padding: 18px; border: 0; border-radius: 999px;
+    background: var(--btn); color: var(--btn-text);
+    font-size: 22px; font-weight: 700; font-family: inherit;
+    cursor: pointer;
+  }
+  #again:active { transform: scale(.97); }
+  #menuBtn {
+    position: fixed; top: calc(env(safe-area-inset-top) + 12px); right: 12px; z-index: 20;
+    width: 48px; height: 48px; border: 0; border-radius: 14px;
+    background: #fff; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  }
+  #menuBtn span { display: block; width: 24px; height: 3px; border-radius: 2px; background: #111; transition: transform .2s, opacity .2s; }
+  body.open #menuBtn span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+  body.open #menuBtn span:nth-child(2) { opacity: 0; }
+  body.open #menuBtn span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+  #scrim { position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 10; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  body.open #scrim { opacity: 1; pointer-events: auto; }
+  #menu {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 15;
+    width: min(80vw, 320px); background: #fff;
+    transform: translateX(100%); transition: transform .25s ease;
+    padding: calc(env(safe-area-inset-top) + 72px) 12px calc(env(safe-area-inset-bottom) + 16px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    box-shadow: -8px 0 24px rgba(0,0,0,.08);
+  }
+  body.open #menu { transform: translateX(0); }
+  #menu button {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 10px 12px; border: 0; border-radius: 12px; background: none;
+    font: inherit; font-size: 19px; color: #111; text-align: right; cursor: pointer;
+  }
+  #menu button:active, #menu button.current { background: #f2f2f2; }
+  #menu img { width: 40px; height: 40px; object-fit: contain; flex: 0 0 auto; }
+  .placeholder {
+    color: #bbb; font-size: 18px; text-align: center;
+  }
+</style>
+</head>
+<body>
+  <button id="menuBtn" aria-label="תפריט"><span></span><span></span><span></span></button>
+  <div id="scrim"></div>
+  <nav id="menu"></nav>
+  <div class="half"><div class="logoCard"><img id="logo" alt="לוגו"></div></div>
+  <div class="divider"></div>
+  <div class="half" id="carBox"><img id="car" alt="מכונית"></div>
+  <button id="again">עוד פעם 🚗</button>
+
+<script>
+  // Each entry: logo file in logos/, car photo in cars/ (same name).
+  const BRANDS = [
+    "toyota","hyundai","kia","mazda","skoda","volkswagen","mercedes-benz",
+    "bmw","audi","tesla","ford","chevrolet","honda","nissan",
+    "mitsubishi","subaru","suzuki","peugeot","citroen","renault","seat",
+    "opel","volvo","jeep","fiat","porsche","ferrari","lamborghini",
+    "land-rover","mini","lexus","byd","mg","dacia","xpeng","geely"
+  ];
+  const CAR_EXT = "webp";
+  const NAMES = {
+    "toyota":"טויוטה","hyundai":"יונדאי","kia":"קיה","mazda":"מאזדה","skoda":"סקודה",
+    "volkswagen":"פולקסווגן","mercedes-benz":"מרצדס","bmw":"ב.מ.וו","audi":"אאודי","tesla":"טסלה",
+    "ford":"פורד","chevrolet":"שברולט","honda":"הונדה","nissan":"ניסאן","mitsubishi":"מיצובישי",
+    "subaru":"סובארו","suzuki":"סוזוקי","peugeot":"פיג'ו","citroen":"סיטרואן","renault":"רנו",
+    "seat":"סיאט","opel":"אופל","volvo":"וולוו","jeep":"ג'יפ","fiat":"פיאט","porsche":"פורשה",
+    "ferrari":"פרארי","lamborghini":"למבורגיני","land-rover":"לנד רובר","mini":"מיני",
+    "lexus":"לקסוס","byd":"BYD","mg":"MG","dacia":"דאצ'יה","xpeng":"אקספנג","geely":"ג'ילי"
+  };
+
+  const logo = document.getElementById("logo");
+  const car = document.getElementById("car");
+  const carBox = document.getElementById("carBox");
+
+  // Shuffle-bag: random order, no repeats until every brand has been shown.
+  let bag = [], last = null;
+  function next() {
+    if (!bag.length) {
+      bag = BRANDS.slice();
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      if (bag[bag.length - 1] === last && bag.length > 1) {
+        [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+      }
+    }
+    return (last = bag.pop());
+  }
+
+  function show(pick) {
+    let b;
+    if (pick) { b = last = pick; bag = bag.filter(x => x !== pick); }
+    else b = next();
+    document.querySelectorAll("#menu button").forEach(el => el.classList.toggle("current", el.dataset.b === b));
+    logo.classList.add("hidden"); car.classList.add("hidden");
+    setTimeout(() => {
+      carBox.querySelector(".placeholder")?.remove();
+      car.style.display = "";
+      logo.src = `logos/${b}.png`;
+      car.src = `cars/${b}.${CAR_EXT}`;
+    }, 150);
+  }
+
+  logo.onload = () => logo.classList.remove("hidden");
+  car.onload = () => car.classList.remove("hidden");
+  car.onerror = () => {               // no photo yet for this brand
+    car.style.display = "none";
+    const p = document.createElement("div");
+    p.className = "placeholder"; p.textContent = "🚗";
+    p.style.fontSize = "96px";
+    carBox.appendChild(p);
+  };
+
+  document.getElementById("again").onclick = () => show();
+
+  // Hamburger menu: alphabetical by Hebrew name
+  const menu = document.getElementById("menu");
+  BRANDS.slice().sort((a, b) => NAMES[a].localeCompare(NAMES[b], "he")).forEach(b => {
+    const btn = document.createElement("button");
+    btn.dataset.b = b;
+    btn.innerHTML = `<img src="logos/${b}.png" alt=""><span>${NAMES[b]}</span>`;
+    btn.onclick = () => { document.body.classList.remove("open"); show(b); };
+    menu.appendChild(btn);
+  });
+  document.getElementById("menuBtn").onclick = () => document.body.classList.toggle("open");
+  document.getElementById("scrim").onclick = () => document.body.classList.remove("open");
+
+  // Preload logos so taps feel instant
+  BRANDS.forEach(b => { const i = new Image(); i.src = `logos/${b}.png`; });
+  show();
+</script>
+</body>
+</html>
