@@ -31,6 +31,33 @@
   }
   #logo { width: 75%; max-width: 420px; }
   #car  { width: 100%; border-radius: 16px; }
+  /* Flip card */
+  .flip { width: 100%; max-width: 480px; height: 100%; perspective: 1200px; cursor: pointer; }
+  .flipInner {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d; transition: transform .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .flip.flipped .flipInner { transform: rotateY(180deg); }
+  .flip.instant .flipInner { transition: none; }
+  .face {
+    position: absolute; inset: 0; border-radius: 24px;
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .front {
+    background: linear-gradient(145deg, #4d8dff, #1e6bff 55%, #1452cc);
+    color: #fff; flex-direction: column; gap: 6px;
+    box-shadow: 0 10px 24px rgba(30,107,255,.25);
+    overflow: hidden;
+  }
+  .front::before {
+    content: ""; position: absolute; inset: 10px; border-radius: 16px;
+    border: 3px dashed rgba(255,255,255,.35);
+  }
+  .front .q { font-size: 110px; font-weight: 800; line-height: 1; }
+  .front .hint { font-size: 20px; font-weight: 600; opacity: .9; }
+  .back { transform: rotateY(180deg); background: #fff; }
+  .back img { max-width: 100%; max-height: 100%; object-fit: contain; }
   .divider { height: 1px; background: var(--line); flex: 0 0 auto; }
   .hidden { opacity: 0; }
   #again {
@@ -73,15 +100,64 @@
   .placeholder {
     color: #bbb; font-size: 18px; text-align: center;
   }
+  /* Home screen */
+  #home {
+    position: fixed; inset: 0; z-index: 30; background: #fff;
+    display: none; flex-direction: column;
+    padding: calc(env(safe-area-inset-top) + 28px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  }
+  body.home #home { display: flex; }
+  #home h1 { text-align: center; font-size: 34px; font-weight: 800; color: #111; margin-bottom: 20px; }
+  .tiles {
+    flex: 1; min-height: 0;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px;
+    max-width: 520px; width: 100%; margin: 0 auto;
+  }
+  .tile {
+    border: 0; border-radius: 24px; cursor: pointer; font-family: inherit; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px; box-shadow: 0 8px 20px rgba(0,0,0,.12);
+  }
+  .tile:active { transform: scale(.97); }
+  .tile .emo { font-size: 54px; line-height: 1; }
+  .tile .name { font-size: 22px; font-weight: 800; text-align: center; }
+  .tile .count { font-size: 15px; font-weight: 600; opacity: .85; }
+  .tile[disabled] { opacity: .45; cursor: default; }
+  .t1 { background: linear-gradient(145deg, #4cd964, #22a947); }
+  .t2 { background: linear-gradient(145deg, #4d8dff, #1e6bff); }
+  .t3 { background: linear-gradient(145deg, #ff9f43, #f2711c); }
+  .t4 { background: linear-gradient(145deg, #b57bff, #7b3fe4); }
+  #homeBtn {
+    position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 12px; z-index: 20;
+    width: 48px; height: 48px; border: 0; border-radius: 14px; background: #fff;
+    font-size: 26px; line-height: 1; cursor: pointer;
+  }
 </style>
 </head>
-<body>
+<body class="home">
+  <section id="home">
+    <h1>איזה אוטו? 🚗</h1>
+    <div class="tiles">
+      <button class="tile t1" data-level="1"><span class="emo">🐣</span><span class="name">מתחילים</span><span class="count"></span></button>
+      <button class="tile t2" data-level="2"><span class="emo">🚙</span><span class="name">מתקדמים</span><span class="count"></span></button>
+      <button class="tile t3" data-level="3"><span class="emo">🏎️</span><span class="name">ממש מתקדמים</span><span class="count"></span></button>
+      <button class="tile t4" data-level="4"><span class="emo">💎</span><span class="name">נדירים</span><span class="count"></span></button>
+    </div>
+  </section>
+  <button id="homeBtn" aria-label="דף ראשי">🏠</button>
   <button id="menuBtn" aria-label="תפריט"><span></span><span></span><span></span></button>
   <div id="scrim"></div>
   <nav id="menu"></nav>
   <div class="half"><div class="logoCard"><img id="logo" alt="לוגו"></div></div>
   <div class="divider"></div>
-  <div class="half" id="carBox"><img id="car" alt="מכונית"></div>
+  <div class="half">
+    <div class="flip" id="carBox" role="button" aria-label="הפוך כרטיס">
+      <div class="flipInner">
+        <div class="face front"><div class="q">?</div><div class="hint">לחץ לגלות 👆</div></div>
+        <div class="face back"><img id="car" alt="מכונית"></div>
+      </div>
+    </div>
+  </div>
   <button id="again">עוד פעם 🚗</button>
 
 <script>
@@ -104,6 +180,15 @@
     "lexus":"לקסוס","byd":"BYD","mg":"MG","dacia":"דאצ'יה","xpeng":"אקספנג","geely":"ג'ילי"
   };
 
+  // Levels (draft — Gilad will assign the final groups)
+  const LEVELS = {
+    1: ["toyota","hyundai","kia","mazda","skoda","bmw","ford","volkswagen"],
+    2: ["audi","honda","nissan","mitsubishi","subaru","suzuki","peugeot","citroen","renault","seat","geely","mercedes-benz"],
+    3: ["opel","chevrolet","volvo","jeep","fiat","mini","lexus","byd","mg","dacia","land-rover","xpeng","tesla"],
+    4: ["porsche","ferrari","lamborghini"]
+  };
+  let pool = BRANDS;
+
   const logo = document.getElementById("logo");
   const car = document.getElementById("car");
   const carBox = document.getElementById("carBox");
@@ -112,7 +197,7 @@
   let bag = [], last = null;
   function next() {
     if (!bag.length) {
-      bag = BRANDS.slice();
+      bag = pool.slice();
       for (let i = bag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -129,42 +214,55 @@
     if (pick) { b = last = pick; bag = bag.filter(x => x !== pick); }
     else b = next();
     document.querySelectorAll("#menu button").forEach(el => el.classList.toggle("current", el.dataset.b === b));
-    logo.classList.add("hidden"); car.classList.add("hidden");
+    // Turn the card face-down instantly, then swap images behind it
+    carBox.classList.add("instant");
+    carBox.classList.remove("flipped");
+    void carBox.offsetWidth;
+    carBox.classList.remove("instant");
+    logo.classList.add("hidden");
     setTimeout(() => {
-      carBox.querySelector(".placeholder")?.remove();
-      car.style.display = "";
       logo.src = `logos/${b}.png`;
       car.src = `cars/${b}.${CAR_EXT}`;
     }, 150);
   }
 
   logo.onload = () => logo.classList.remove("hidden");
-  car.onload = () => car.classList.remove("hidden");
-  car.onerror = () => {               // no photo yet for this brand
-    car.style.display = "none";
-    const p = document.createElement("div");
-    p.className = "placeholder"; p.textContent = "🚗";
-    p.style.fontSize = "96px";
-    carBox.appendChild(p);
-  };
+  carBox.onclick = () => carBox.classList.toggle("flipped");
 
   document.getElementById("again").onclick = () => show();
 
-  // Hamburger menu: alphabetical by Hebrew name
+  // Hamburger menu: brands of the current level, alphabetical by Hebrew name
   const menu = document.getElementById("menu");
-  BRANDS.slice().sort((a, b) => NAMES[a].localeCompare(NAMES[b], "he")).forEach(b => {
-    const btn = document.createElement("button");
-    btn.dataset.b = b;
-    btn.innerHTML = `<img src="logos/${b}.png" alt=""><span>${NAMES[b]}</span>`;
-    btn.onclick = () => { document.body.classList.remove("open"); show(b); };
-    menu.appendChild(btn);
-  });
+  function buildMenu() {
+    menu.innerHTML = "";
+    pool.slice().sort((a, b) => NAMES[a].localeCompare(NAMES[b], "he")).forEach(b => {
+      const btn = document.createElement("button");
+      btn.dataset.b = b;
+      btn.innerHTML = `<img src="logos/${b}.png" alt=""><span>${NAMES[b]}</span>`;
+      btn.onclick = () => { document.body.classList.remove("open"); show(b); };
+      menu.appendChild(btn);
+    });
+  }
   document.getElementById("menuBtn").onclick = () => document.body.classList.toggle("open");
   document.getElementById("scrim").onclick = () => document.body.classList.remove("open");
 
+  // Home screen: pick a level
+  function startLevel(n) {
+    pool = LEVELS[n]; bag = []; last = null;
+    buildMenu();
+    document.body.classList.remove("home", "open");
+    show();
+  }
+  document.querySelectorAll(".tile").forEach(t => {
+    const list = LEVELS[t.dataset.level] || [];
+    t.querySelector(".count").textContent = `${list.length} מכוניות`;
+    if (!list.length) t.disabled = true;
+    t.onclick = () => startLevel(t.dataset.level);
+  });
+  document.getElementById("homeBtn").onclick = () => document.body.classList.add("home");
+
   // Preload logos so taps feel instant
   BRANDS.forEach(b => { const i = new Image(); i.src = `logos/${b}.png`; });
-  show();
 </script>
 </body>
 </html>
